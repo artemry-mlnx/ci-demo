@@ -234,7 +234,10 @@ def runDocker(image, branchName, config, axis) {
 
 Map getTasks(axes, image, config, include=null, exclude=null) {
 
-    Map tasks = [failFast: config.failFast? config.failFast : true]
+    def val = getConfigVal(config, ['failFast'], true)
+    config.logger.debug("failFast = " + val)
+
+    Map tasks = [failFast: val]
     for(int i = 0; i < axes.size(); i++) {
         Map axis = axes[i]
         axis.put("name", image.name)

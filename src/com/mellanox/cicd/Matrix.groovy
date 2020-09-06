@@ -308,12 +308,12 @@ String getChangedFilesList(config) {
     def cFiles = []
 
     def logger = config.get("logger")
-    logger.info("Git commit: ${env.GIT_COMMIT} prev commit: ${env.GIT_PREV_COMMIT}")
+    logger.debug("Calculating changes for git commit: ${env.GIT_COMMIT} prev commit: ${env.GIT_PREV_COMMIT}")
 
     try {
         def dcmd
         if (env.GIT_COMMIT && env.GIT_PREV_COMMIT) {
-            dcmd = "git diff --name-only ${config.GIT_PREV_COMMIT} ${config.GIT_COMMIT}"
+            dcmd = "git diff --name-only ${env.GIT_PREV_COMMIT} ${env.GIT_COMMIT}"
         } else {
             def br  = env.ghprbTargetBranch? env.ghprbTargetBranch : "master"
             def sha = env.ghprbActualCommit? env.ghprbActualCommit : "HEAD"

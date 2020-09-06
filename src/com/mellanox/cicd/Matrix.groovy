@@ -347,7 +347,8 @@ def build_docker_on_k8(image, config) {
 
     podTemplate(cloud: cloudName, runAsUser: "0", runAsGroup: "0",
                 containers: [
-                    containerTemplate(name: 'docker', image: 'docker:19.03', ttyEnabled: true, alwaysPullImage: true, command: 'cat')
+//                    containerTemplate(name: 'docker', image: 'docker:19.03', ttyEnabled: true, alwaysPullImage: true, command: 'cat')
+                    containerTemplate(name: 'docker', image: 'centos7-7', ttyEnabled: true, alwaysPullImage: true, command: 'cat')
                 ],
                 volumes: listV
                 )
@@ -428,7 +429,7 @@ def main() {
             if (config.pipeline_start) {
                 cmd = config.pipeline_start.run
                 if (cmd) {
-                    logger.debug("Starting pipline")
+                    logger.debug("Starting pipeline")
                     stage("Start ${config.job}") {
                         run_shell("${cmd}", "start")
                     }

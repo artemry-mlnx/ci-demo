@@ -312,7 +312,7 @@ String getChangedFilesList(config) {
 
     try {
         def dcmd
-        if (config.GIT_COMMIT && config.GIT_PREV_COMMIT) {
+        if (env.GIT_COMMIT && env.GIT_PREV_COMMIT) {
             dcmd = "git diff --name-only ${config.GIT_PREV_COMMIT} ${config.GIT_COMMIT}"
         } else {
             def br  = env.ghprbTargetBranch? env.ghprbTargetBranch : "master"
@@ -337,17 +337,17 @@ def build_docker_on_k8(image, config) {
     def v1 = hostPathVolume(hostPath: '/var/run/docker.sock', mountPath: '/var/run/docker.sock')
     listV.add(v1)
 
-    def cFiles = []
-
     def img      = image.url
     def arch     = image.arch
     def filename = image.filename
     def distro   = image.name
     def cloudName = getConfigVal(config, ['kubernetes','cloud'], "")
 
+    config.logger.debug("Checking docker image $distro availability")
+
     podTemplate(cloud: cloudName, runAsUser: "0", runAsGroup: "0",
                 containers: [
-                    containerTemplate(name: 'docker', image: 'docker:19.03', ttyEnabled: true, alwaysPullImage: true, command: 'cat'),
+                    containerTemplate(name: 'docker', image: 'docker:19.03', ttyEnabled: true, alwaysPullImage: true, command: 'cat')
                 ],
                 volumes: listV
                 )

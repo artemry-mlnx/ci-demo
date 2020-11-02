@@ -95,6 +95,9 @@ def gen_image_map(config) {
             if (dfile.nodeLabel) {
                 item.put('nodeLabel', dfile.nodeLabel)
             }
+            if (dfile.nodeSelector) {
+                item.put('nodeSelector', dfile.nodeSelector)
+            }
             config.logger.debug("Adding docker to image_map for " + arch + " name: " + item.name)
             images.add(item)
         }

@@ -228,8 +228,8 @@ def parseListV(volumes) {
 }
 
 def runK8(image, branchName, config, axis) {
-
     def cloudName = getConfigVal(config, ['kubernetes','cloud'], "")
+    def nodeSelector = ""
 
     config.logger.info("Running kubernetes ${cloudName}")
 
@@ -243,7 +243,11 @@ def runK8(image, branchName, config, axis) {
 
     def listV = parseListV(config.volumes)
     def cname = image.get("name").replaceAll("[\\.:/_]","")
-    def nodeSelector = getConfigVal(config, ['kubernetes', 'nodeSelector'], "")
+
+    if (axis.nodeSelector) {
+        nodeSelector = axis.nodeSelector
+    }
+    //def nodeSelector = getConfigVal(config, ['kubernetes', 'nodeSelector'], "")
 
     podTemplate(cloud: cloudName, runAsUser: "0", runAsGroup: "0",
                 nodeSelector: nodeSelector,

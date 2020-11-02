@@ -239,13 +239,30 @@ def runK8(image, branchName, config, axis) {
     }
 
     run_shell('printf "%s"' +  '"' + str + '"', "Matrix axis parameters")
-    run_shell('printf "INFO: arch = %s"' + axis.arch, "DEBUG")
 
     def listV = parseListV(config.volumes)
     def cname = image.get("name").replaceAll("[\\.:/_]","")
 
+    run_shell('printf "INFO: arch = %s"' + axis.arch, "DEBUG")
+
+    switch(axis.arch) {
+        case 'x86_64':
+            nodeSelector = 'kubernetes.io/arch=amd64'
+            break;
+        case 'aarch64':
+            nodeSelector = 'kubernetes.io/arch=arm64'
+            break;
+        default:
+            println('ERROR: unknown arch')
+            break;
+    }
+
     if (axis.nodeSelector) {
-        nodeSelector = axis.nodeSelector
+        if (nodeSelector) {
+            nodeSelector = nodeSelector + ',' + axis.nodeSelector
+        } else {
+            nodeSelector = axis.nodeSelector
+        }
     }
     //def nodeSelector = getConfigVal(config, ['kubernetes', 'nodeSelector'], "")
 

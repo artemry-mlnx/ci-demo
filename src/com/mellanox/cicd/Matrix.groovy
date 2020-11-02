@@ -264,7 +264,6 @@ def runK8(image, branchName, config, axis) {
             nodeSelector = axis.nodeSelector
         }
     }
-    //def nodeSelector = getConfigVal(config, ['kubernetes', 'nodeSelector'], "")
 
     podTemplate(cloud: cloudName, runAsUser: "0", runAsGroup: "0",
                 nodeSelector: nodeSelector,

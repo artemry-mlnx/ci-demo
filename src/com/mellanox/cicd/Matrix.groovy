@@ -236,8 +236,7 @@ def runK8(image, branchName, config, axis) {
     }
 
     run_shell('printf "%s"' +  '"' + str + '"', "Matrix axis parameters")
-    
-
+    run_shell('printf "INFO: arch = %s"' + axis.arch)
 
     def listV = parseListV(config.volumes)
     def cname = image.get("name").replaceAll("[\\.:/_]","")

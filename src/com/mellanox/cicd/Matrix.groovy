@@ -265,22 +265,23 @@ def runK8(image, branchName, config, axis) {
         }
     }
 
-    podTemplate(cloud: cloudName, runAsUser: "0", runAsGroup: "0",
-                nodeSelector: nodeSelector,
-                containers: [
-                    containerTemplate(name: cname, image: image.url, ttyEnabled: true, alwaysPullImage: true, command: 'cat')
-                ],
-                volumes: listV
-                )
-    {
-        node(POD_LABEL) {
-            stage (branchName) {
-                container(cname) {
-                    runSteps(image, config)
-                }
-            }
-        }
-    }
+    // TODO debug
+    //podTemplate(cloud: cloudName, runAsUser: "0", runAsGroup: "0",
+    //            nodeSelector: nodeSelector,
+    //            containers: [
+    //                containerTemplate(name: cname, image: image.url, ttyEnabled: true, alwaysPullImage: true, command: 'cat')
+    //            ],
+    //            volumes: listV
+    //            )
+    //{
+    //    node(POD_LABEL) {
+    //        stage (branchName) {
+    //            container(cname) {
+    //                runSteps(image, config)
+    //            }
+    //        }
+    //    }
+    //}
 }
 
 def resolveTemplate(varsMap, str) {

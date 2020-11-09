@@ -270,6 +270,7 @@ def runK8(image, branchName, config, axis) {
     podTemplate(cloud: cloudName, runAsUser: "0", runAsGroup: "0",
                 nodeSelector: nodeSelector,
                 containers: [
+                    containerTemplate(name: 'jnlp-tester', image: 'jenkins/inbound-agent:latest'),
                     containerTemplate(name: cname, image: image.url, ttyEnabled: true, alwaysPullImage: true, command: 'cat')
                 ],
                 volumes: listV

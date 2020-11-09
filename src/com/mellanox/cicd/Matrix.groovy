@@ -247,8 +247,8 @@ def runK8(image, branchName, config, axis) {
 
     switch(axis.arch) {
         case 'x86_64':
-            //nodeSelector = 'kubernetes.io/arch=amd64'
-            nodeSelector = 'x86_64'
+            nodeSelector = 'kubernetes.io/arch=amd64'
+            //nodeSelector = 'x86_64'
             break;
         case 'aarch64':
             nodeSelector = 'kubernetes.io/arch=arm64'

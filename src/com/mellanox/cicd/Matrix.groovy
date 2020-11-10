@@ -267,7 +267,10 @@ def runK8(image, branchName, config, axis) {
     }
 
     // TODO debug
-    podTemplate(cloud: cloudName, runAsUser: "0", runAsGroup: "0",
+    podTemplate(
+        cloud: cloudName,
+        runAsUser: "0",
+        runAsGroup: "0",
         nodeSelector: nodeSelector,
         containers: [
             //containerTemplate(name: 'jnlp-tester', image: 'jenkins/inbound-agent:latest', args: '${computer.jnlpmac} ${computer.name}'),
@@ -276,7 +279,7 @@ def runK8(image, branchName, config, axis) {
             containerTemplate(name: cname, image: image.url, ttyEnabled: true, alwaysPullImage: true, command: 'cat')
         ],
         volumes: listV
-        )
+    )
     {
         node(POD_LABEL) {
             stage (branchName) {
@@ -468,22 +471,44 @@ def buildDocker(image, config) {
 
 
 def build_docker_on_k8(image, config) {
-
     def myVols = config.volumes.collect()
     myVols.add([mountPath: '/var/run/docker.sock', hostPath: '/var/run/docker.sock'])
-
     def listV = parseListV(myVols)
-
     def cloudName = getConfigVal(config, ['kubernetes','cloud'], "")
-
     config.logger.debug("Checking docker image availability")
+    def nodeSelector = ''
 
-    podTemplate(cloud: cloudName, runAsUser: "0", runAsGroup: "0",
-                containers: [
-                    containerTemplate(name: 'docker', image: 'docker:19.03', ttyEnabled: true, alwaysPullImage: true, command: 'cat')
-                ],
-                volumes: listV
-                )
+    switch(image.arch) {
+        case 'x86_64':
+            nodeSelector = 'kubernetes.io/arch=amd64'
+            //nodeSelector = 'x86_64'
+            break;
+        case 'aarch64':
+            nodeSelector = 'kubernetes.io/arch=arm64'
+            break;
+        default:
+            println('ERROR: unknown arch')
+            break;
+    }
+
+    if (image.nodeSelector) {
+        if (nodeSelector) {
+            nodeSelector = nodeSelector + ',' + image.nodeSelector
+        } else {
+            nodeSelector = image.nodeSelector
+        }
+    }
+
+    podTemplate(
+        cloud: cloudName,
+        runAsUser: "0",
+        runAsGroup: "0",
+        nodeSelector: nodeSelector,
+        containers: [
+            containerTemplate(name: 'docker', image: 'docker:19.03', ttyEnabled: true, alwaysPullImage: true, command: 'cat')
+        ],
+        volumes: listV
+    )
     {
         node(POD_LABEL) {
             unstash "${env.JOB_NAME}"

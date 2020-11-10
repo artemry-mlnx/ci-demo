@@ -268,13 +268,13 @@ def runK8(image, branchName, config, axis) {
 
     // TODO debug
     podTemplate(cloud: cloudName, runAsUser: "0", runAsGroup: "0",
-                nodeSelector: nodeSelector,
-                containers: [
-                    containerTemplate(name: 'jnlp-tester', image: 'jenkins/inbound-agent:latest', args: '${computer.jnlpmac} ${computer.name}'),
-                    containerTemplate(name: cname, image: image.url, ttyEnabled: true, alwaysPullImage: true, command: 'cat')
-                ],
-                volumes: listV
-                )
+        nodeSelector: nodeSelector,
+        containers: [
+            //containerTemplate(name: 'jnlp-tester', image: 'jenkins/inbound-agent:latest', args: '${computer.jnlpmac} ${computer.name}'),
+            containerTemplate(name: cname, image: image.url, ttyEnabled: true, alwaysPullImage: true, command: 'cat')
+        ],
+        volumes: listV
+        )
     {
         node(POD_LABEL) {
             stage (branchName) {

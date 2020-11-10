@@ -253,7 +253,7 @@ def runK8(image, branchName, config, axis) {
             break;
         case 'aarch64':
             nodeSelector = 'kubernetes.io/arch=arm64'
-            jnlpImage = 'jenkins-arm-slave-jnlp:latest'
+            jnlpImage = 'harbor.mellanox.com/swx-storage/jenkins-arm-slave-jnlp:latest'
             break;
         default:
             println('ERROR: unknown arch')
@@ -484,7 +484,7 @@ def build_docker_on_k8(image, config) {
             break;
         case 'aarch64':
             nodeSelector = 'kubernetes.io/arch=arm64'
-            jnlpImage = 'jenkins-arm-slave-jnlp:latest'
+            jnlpImage = 'harbor.mellanox.com/swx-storage/jenkins-arm-slave-jnlp:latest'
             break;
         default:
             println('ERROR: unknown arch')

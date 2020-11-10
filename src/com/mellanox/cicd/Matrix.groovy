@@ -505,6 +505,7 @@ def build_docker_on_k8(image, config) {
         runAsGroup: "0",
         nodeSelector: nodeSelector,
         containers: [
+            containerTemplate(name: 'jnlp', image: 'jenkins/inbound-agent:latest', args: '${computer.jnlpmac} ${computer.name}'),
             containerTemplate(name: 'docker', image: 'docker:19.03', ttyEnabled: true, alwaysPullImage: true, command: 'cat')
         ],
         volumes: listV

@@ -271,7 +271,8 @@ def runK8(image, branchName, config, axis) {
         nodeSelector: nodeSelector,
         containers: [
             //containerTemplate(name: 'jnlp-tester', image: 'jenkins/inbound-agent:latest', args: '${computer.jnlpmac} ${computer.name}'),
-            containerTemplate(name: 'jnlp', image: 'jenkins/inbound-agent:4.3-4-alpine', args: '${computer.jnlpmac} ${computer.name}'),
+            //containerTemplate(name: 'jnlp', image: 'jenkins/inbound-agent:4.3-4-alpine', args: '${computer.jnlpmac} ${computer.name}'),
+            containerTemplate(name: 'jnlp', image: 'jenkins/inbound-agent:latest', args: '${computer.jnlpmac} ${computer.name}'),
             containerTemplate(name: cname, image: image.url, ttyEnabled: true, alwaysPullImage: true, command: 'cat')
         ],
         volumes: listV

@@ -230,6 +230,7 @@ def parseListV(volumes) {
 def runK8(image, branchName, config, axis) {
     def cloudName = getConfigVal(config, ['kubernetes','cloud'], "")
     def nodeSelector = ""
+    def jnlpImage = ''
 
     config.logger.info("Running kubernetes ${cloudName}")
 
@@ -248,10 +249,11 @@ def runK8(image, branchName, config, axis) {
     switch(axis.arch) {
         case 'x86_64':
             nodeSelector = 'kubernetes.io/arch=amd64'
-            //nodeSelector = 'x86_64'
+            jnlpImage = 'jenkins/inbound-agent:latest'
             break;
         case 'aarch64':
             nodeSelector = 'kubernetes.io/arch=arm64'
+            jnlpImage = 'jenkins-arm-slave-jnlp:latest'
             break;
         default:
             println('ERROR: unknown arch')
@@ -266,17 +268,13 @@ def runK8(image, branchName, config, axis) {
         }
     }
 
-    // TODO debug
     podTemplate(
         cloud: cloudName,
         runAsUser: "0",
         runAsGroup: "0",
         nodeSelector: nodeSelector,
         containers: [
-            //containerTemplate(name: 'jnlp-tester', image: 'jenkins/inbound-agent:latest', args: '${computer.jnlpmac} ${computer.name}'),
-            //containerTemplate(name: 'jnlp', image: 'jenkins/inbound-agent:4.3-4-alpine', args: '${computer.jnlpmac} ${computer.name}'),
-            //containerTemplate(name: 'jnlp', image: 'jenkins/inbound-agent:latest', args: '${computer.jnlpmac} ${computer.name}'),
-            containerTemplate(name: 'jnlp', image: 'jenkins-arm-slave-jnlp:latest', args: '${computer.jnlpmac} ${computer.name}'),
+            containerTemplate(name: 'jnlp', image: jnlpImage, args: '${computer.jnlpmac} ${computer.name}'),
             containerTemplate(name: cname, image: image.url, ttyEnabled: true, alwaysPullImage: true, command: 'cat')
         ],
         volumes: listV
@@ -482,10 +480,11 @@ def build_docker_on_k8(image, config) {
     switch(image.arch) {
         case 'x86_64':
             nodeSelector = 'kubernetes.io/arch=amd64'
-            //nodeSelector = 'x86_64'
+            jnlpImage = 'jenkins/inbound-agent:latest'
             break;
         case 'aarch64':
             nodeSelector = 'kubernetes.io/arch=arm64'
+            jnlpImage = 'jenkins-arm-slave-jnlp:latest'
             break;
         default:
             println('ERROR: unknown arch')
@@ -506,8 +505,7 @@ def build_docker_on_k8(image, config) {
         runAsGroup: "0",
         nodeSelector: nodeSelector,
         containers: [
-            //containerTemplate(name: 'jnlp', image: 'jenkins/inbound-agent:latest', args: '${computer.jnlpmac} ${computer.name}'),
-            containerTemplate(name: 'jnlp', image: 'jenkins-arm-slave-jnlp:latest', args: '${computer.jnlpmac} ${computer.name}'),
+            containerTemplate(name: 'jnlp', image: jnlpImage, args: '${computer.jnlpmac} ${computer.name}'),
             containerTemplate(name: 'docker', image: 'docker:19.03', ttyEnabled: true, alwaysPullImage: true, command: 'cat')
         ],
         volumes: listV

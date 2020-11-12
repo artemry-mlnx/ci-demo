@@ -95,19 +95,18 @@ def gen_image_map(config) {
 
             if (dfile.arch && dfile.arch != arch) {
                 config.logger.debug("WARNING: skipped conf: " + item.arch + " name: " + item.name)
-                continue
-            }
+            } else {
+                if (dfile.nodeLabel) {
+                    item.put('nodeLabel', dfile.nodeLabel)
+                }
 
-            if (dfile.nodeLabel) {
-                item.put('nodeLabel', dfile.nodeLabel)
-            }
+                if (dfile.nodeSelector) {
+                    item.put('nodeSelector', dfile.nodeSelector)
+                }
 
-            if (dfile.nodeSelector) {
-                item.put('nodeSelector', dfile.nodeSelector)
+                config.logger.debug("Adding docker to image_map for " + item.arch + " name: " + item.name)
+                images.add(item)
             }
-
-            config.logger.debug("Adding docker to image_map for " + item.arch + " name: " + item.name)
-            images.add(item)
         }
     }
 

@@ -80,7 +80,7 @@ def gen_image_map(config) {
     }
 
 
-    image_map.each { arch, images ->
+    //image_map.each { arch, images ->
         config.runs_on_dockers.each { dfile ->
             if (!dfile.file) {
                 dfile.file = ""
@@ -101,7 +101,7 @@ def gen_image_map(config) {
             config.logger.debug("Adding docker to image_map for " + arch + " name: " + item.name)
             images.add(item)
         }
-    }
+    //}
     return image_map
 }
 

@@ -86,10 +86,10 @@ def gen_image_map(config) {
                 dfile.file = ""
             }
             def item = [\
-                arch: "${arch}", \
+                arch: "${dfile.arch}", \
                 tag:  "${dfile.tag}", \
                 filename: "${dfile.file}", \
-                url: "${config.registry_host}${config.registry_path}/${arch}/${dfile.name}:${dfile.tag}", \
+                url: "${config.registry_host}${config.registry_path}/${dfile.arch}/${dfile.name}:${dfile.tag}", \
                 name: "${dfile.name}" \
             ]
             if (dfile.nodeLabel) {
@@ -98,7 +98,7 @@ def gen_image_map(config) {
             if (dfile.nodeSelector) {
                 item.put('nodeSelector', dfile.nodeSelector)
             }
-            config.logger.debug("Adding docker to image_map for " + arch + " name: " + item.name)
+            config.logger.debug("Adding docker to image_map for " + item.arch + " name: " + item.name)
             images.add(item)
         }
     //}

@@ -81,11 +81,6 @@ def gen_image_map(config) {
 
     image_map.each { arch, images ->
         config.runs_on_dockers.each { dfile ->
-            if (dfile.arch) && (dfile.arch != arch) {
-                config.logger.debug("WARNING: skipped")
-                continue
-            }
-
             if (!dfile.file) {
                 dfile.file = ""
             }

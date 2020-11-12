@@ -95,6 +95,9 @@ def gen_image_map(config) {
             if (dfile.nodeLabel) {
                 item.put('nodeLabel', dfile.nodeLabel)
             }
+            if (dfile.nodeSelector) {
+                item.put('nodeSelector', dfile.nodeSelector)
+            }
             config.logger.debug("Adding docker to image_map for " + arch + " name: " + item.name)
             images.add(item)
         }
@@ -225,8 +228,9 @@ def parseListV(volumes) {
 }
 
 def runK8(image, branchName, config, axis) {
-
     def cloudName = getConfigVal(config, ['kubernetes','cloud'], "")
+    def nodeSelector = ""
+    def jnlpImage = ''
 
     config.logger.info("Running kubernetes ${cloudName}")
 
@@ -236,20 +240,45 @@ def runK8(image, branchName, config, axis) {
     }
 
     run_shell('printf "%s"' +  '"' + str + '"', "Matrix axis parameters")
-    
-
 
     def listV = parseListV(config.volumes)
     def cname = image.get("name").replaceAll("[\\.:/_]","")
-    def nodeSelector = getConfigVal(config, ['kubernetes', 'nodeSelector'], "")
 
-    podTemplate(cloud: cloudName, runAsUser: "0", runAsGroup: "0",
-                nodeSelector: nodeSelector,
-                containers: [
-                    containerTemplate(name: cname, image: image.url, ttyEnabled: true, alwaysPullImage: true, command: 'cat')
-                ],
-                volumes: listV
-                )
+    run_shell('printf "INFO: arch = %s"' + axis.arch, "DEBUG")
+
+    switch(axis.arch) {
+        case 'x86_64':
+            nodeSelector = 'kubernetes.io/arch=amd64'
+            jnlpImage = 'jenkins/inbound-agent:latest'
+            break;
+        case 'aarch64':
+            nodeSelector = 'kubernetes.io/arch=arm64'
+            jnlpImage = 'harbor.mellanox.com/swx-storage/jenkins-arm-slave-jnlp:latest'
+            break;
+        default:
+            println('ERROR: unknown arch')
+            break;
+    }
+
+    if (axis.nodeSelector) {
+        if (nodeSelector) {
+            nodeSelector = nodeSelector + ',' + axis.nodeSelector
+        } else {
+            nodeSelector = axis.nodeSelector
+        }
+    }
+
+    podTemplate(
+        cloud: cloudName,
+        runAsUser: "0",
+        runAsGroup: "0",
+        nodeSelector: nodeSelector,
+        containers: [
+            containerTemplate(name: 'jnlp', image: jnlpImage, args: '${computer.jnlpmac} ${computer.name}'),
+            containerTemplate(name: cname, image: image.url, ttyEnabled: true, alwaysPullImage: true, command: 'cat')
+        ],
+        volumes: listV
+    )
     {
         node(POD_LABEL) {
             stage (branchName) {
@@ -441,22 +470,46 @@ def buildDocker(image, config) {
 
 
 def build_docker_on_k8(image, config) {
-
     def myVols = config.volumes.collect()
     myVols.add([mountPath: '/var/run/docker.sock', hostPath: '/var/run/docker.sock'])
-
     def listV = parseListV(myVols)
-
     def cloudName = getConfigVal(config, ['kubernetes','cloud'], "")
-
     config.logger.debug("Checking docker image availability")
+    def nodeSelector = ''
 
-    podTemplate(cloud: cloudName, runAsUser: "0", runAsGroup: "0",
-                containers: [
-                    containerTemplate(name: 'docker', image: 'docker:19.03', ttyEnabled: true, alwaysPullImage: true, command: 'cat')
-                ],
-                volumes: listV
-                )
+    switch(image.arch) {
+        case 'x86_64':
+            nodeSelector = 'kubernetes.io/arch=amd64'
+            jnlpImage = 'jenkins/inbound-agent:latest'
+            break;
+        case 'aarch64':
+            nodeSelector = 'kubernetes.io/arch=arm64'
+            jnlpImage = 'harbor.mellanox.com/swx-storage/jenkins-arm-slave-jnlp:latest'
+            break;
+        default:
+            println('ERROR: unknown arch')
+            break;
+    }
+
+    if (image.nodeSelector) {
+        if (nodeSelector) {
+            nodeSelector = nodeSelector + ',' + image.nodeSelector
+        } else {
+            nodeSelector = image.nodeSelector
+        }
+    }
+
+    podTemplate(
+        cloud: cloudName,
+        runAsUser: "0",
+        runAsGroup: "0",
+        nodeSelector: nodeSelector,
+        containers: [
+            containerTemplate(name: 'jnlp', image: jnlpImage, args: '${computer.jnlpmac} ${computer.name}'),
+            containerTemplate(name: 'docker', image: 'docker:19.03', ttyEnabled: true, alwaysPullImage: true, command: 'cat')
+        ],
+        volumes: listV
+    )
     {
         node(POD_LABEL) {
             unstash "${env.JOB_NAME}"
@@ -530,14 +583,13 @@ def main() {
             }
         
             try {
-
-		def bSize = getConfigVal(config, ['batchSize'], 10)
-		(branches.keySet() as List).collate(bSize).each {
-		  logger.debug("batch here")
-                  timestamps {
-                    parallel branches.subMap(it)
-                  }
-		}
+                def bSize = getConfigVal(config, ['batchSize'], 10)
+                (branches.keySet() as List).collate(bSize).each {
+                    logger.debug("batch here")
+                    timestamps {
+                        parallel branches.subMap(it)
+                    }
+                }
             } finally {
                 if (config.pipeline_stop) {
                     cmd = config.pipeline_stop.run
@@ -550,9 +602,7 @@ def main() {
                 }
             }
         }
-
     }
-
 }
 
 return this

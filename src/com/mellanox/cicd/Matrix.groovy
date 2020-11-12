@@ -98,7 +98,7 @@ def gen_image_map(config) {
                 name: "${dfile.name}" \
             ]
 
-            if (dfile.arch) && (dfile.arch != arch) {
+            if (dfile.arch && dfile.arch != arch) {
                 config.logger.debug("WARNING: skipped conf: " + item.arch + " name: " + item.name)
                 continue
             }

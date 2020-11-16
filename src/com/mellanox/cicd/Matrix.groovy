@@ -85,28 +85,29 @@ def gen_image_map(config) {
                 dfile.file = ""
             }
 
+            if (dfile.arch && dfile.arch != arch) {
+                config.logger.debug("WARNING: skipped conf: " + dfile.arch + " name: " + dfile.name)
+                return
+            }
+
             def item = [\
-                arch: "${dfile.arch}", \
+                arch: "${arch}", \
                 tag:  "${dfile.tag}", \
                 filename: "${dfile.file}", \
-                url: "${config.registry_host}${config.registry_path}/${dfile.arch}/${dfile.name}:${dfile.tag}", \
+                url: "${config.registry_host}${config.registry_path}/${arch}/${dfile.name}:${dfile.tag}", \
                 name: "${dfile.name}" \
             ]
 
-            if (dfile.arch && dfile.arch != arch) {
-                config.logger.debug("WARNING: skipped conf: " + item.arch + " name: " + item.name)
-            } else {
-                if (dfile.nodeLabel) {
-                    item.put('nodeLabel', dfile.nodeLabel)
-                }
-
-                if (dfile.nodeSelector) {
-                    item.put('nodeSelector', dfile.nodeSelector)
-                }
-
-                config.logger.debug("Adding docker to image_map for " + item.arch + " name: " + item.name)
-                images.add(item)
+            if (dfile.nodeLabel) {
+                item.put('nodeLabel', dfile.nodeLabel)
             }
+
+            if (dfile.nodeSelector) {
+                item.put('nodeSelector', dfile.nodeSelector)
+            }
+
+            config.logger.debug("Adding docker to image_map for " + item.arch + " name: " + item.name)
+            images.add(item)
         }
     }
 

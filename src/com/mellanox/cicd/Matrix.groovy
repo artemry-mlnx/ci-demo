@@ -592,6 +592,7 @@ def main() {
             }
         
             try {
+
                 def bSize = getConfigVal(config, ['batchSize'], 10)
                 def timeout_min = getConfigVal(config, ['timeout_minutes'], "90")
                 timeout(time: timeout_min, unit: 'MINUTES') {

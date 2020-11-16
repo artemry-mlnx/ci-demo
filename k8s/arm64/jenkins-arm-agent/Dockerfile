@@ -1,7 +1,7 @@
 # Run on arm64 (aarch64) host - e.g. hpc-arm-01
-# docker build --no-cache --network=host --rm --force-rm -t harbor.mellanox.com/swx-storage/jenkins-arm-slave .
+# docker build --no-cache --network=host --rm --force-rm -t harbor.mellanox.com/swx-storage/jenkins-arm-agent .
 # docker login harbor.mellanox.com/swx-storage
-# docker push harbor.mellanox.com/swx-storage/jenkins-arm-slave-jnlp
+# docker push harbor.mellanox.com/swx-storage/jenkins-arm-agent
 
 FROM arm64v8/openjdk:11.0.9-jre
 

@@ -265,7 +265,7 @@ def runK8(image, branchName, config, axis) {
             jnlpImage = 'harbor.mellanox.com/swx-storage/jenkins-arm-agent-jnlp:latest'
             break;
         default:
-            println('ERROR: unknown arch')
+            config.logger.error("Unknown arch (${arch})")
             break;
     }
 
@@ -496,7 +496,7 @@ def build_docker_on_k8(image, config) {
             jnlpImage = 'harbor.mellanox.com/swx-storage/jenkins-arm-agent-jnlp:latest'
             break;
         default:
-            println('ERROR: unknown arch')
+            config.logger.error("Unknown arch (${arch})")
             break;
     }
 

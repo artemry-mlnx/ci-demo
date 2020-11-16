@@ -441,7 +441,6 @@ String getChangedFilesList(config) {
 }
 
 def buildDocker(image, config) {
-
     def img      = image.url
     def arch     = image.arch
     def filename = image.filename

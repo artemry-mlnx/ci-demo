@@ -243,6 +243,35 @@ def parseListV(volumes) {
     return listV
 }
 
+Map getArchConf(arch) {
+    def nodeSelector = ''
+    def jnlpImage = ''
+    def archConfMap = [:]
+
+    switch(arch) {
+        case 'x86_64':
+            nodeSelector = 'kubernetes.io/arch=amd64'
+            jnlpImage = 'jenkins/inbound-agent:latest'
+            break;
+        case 'aarch64':
+            nodeSelector = 'kubernetes.io/arch=arm64'
+            jnlpImage = 'harbor.mellanox.com/swx-storage/jenkins-arm-agent-jnlp:latest'
+            break;
+        default:
+            config.logger.warn("Skipped unsupported arch (${arch})")
+            return
+            break;
+    }
+
+    archConfMap = [\
+        arch: "${arch}", \
+        nodeSelector: "${nodeSelector}", \
+        jnlpImage: "${jnlpImage}" \
+    ]
+
+    return archConfMap
+}
+
 def runK8(image, branchName, config, axis) {
     def cloudName = getConfigVal(config, ['kubernetes','cloud'], "")
     def k8sArchTable = getConfigVal(config, ['kubernetes','arch_table'], "")

@@ -97,12 +97,17 @@ def gen_image_map(config) {
                 return
             }
 
+            if (!dfile.build_args) {
+                dfile.build_args = ""
+            }
+
             def item = [\
                 arch: "${arch}", \
                 tag:  "${dfile.tag}", \
                 filename: "${dfile.file}", \
                 url: "${config.registry_host}${config.registry_path}/${arch}/${dfile.name}:${dfile.tag}", \
-                name: "${dfile.name}" \
+                name: "${dfile.name}", \
+                build_args: "${dfile.build_args}" \
             ]
 
             if (dfile.nodeLabel) {
@@ -433,11 +438,11 @@ Map getMatrixTasks(image, config) {
     return getTasks(axes, image, config, include, exclude)
 }
 
-def buildImage(img, filename, config) {
+def buildImage(img, filename, extra_args, config) {
     if(filename == "") {
         config.logger.fatal("No docker filename specified, skipping build docker")
     }
-    customImage = docker.build("${img}", "-f ${filename} . ")
+    customImage = docker.build("${img}", "-f ${filename} ${extra_args} . ")
     customImage.push()
 }
 
@@ -472,10 +477,14 @@ String getChangedFilesList(config) {
 
 def buildDocker(image, config) {
 
-    def img      = image.url
-    def arch     = image.arch
-    def filename = image.filename
-    def distro   = image.name
+    def img = image.url
+    def arch = image.arch
+    // Vasily Ryabov: we need .toString() to make changed_files.contains(filename) work correctly
+    // See https://stackoverflow.com/q/56829842/3648361
+    def filename = image.filename.toString().trim()
+    def distro = image.name
+    def extra_args = image.build_args
+    def changed_files = config.get("cFiles")
 
     stage("Prepare docker image for ${config.job}/$arch/$distro") {
         config.logger.info("Going to fetch docker image: ${img} from ${config.registry_host}")
@@ -494,13 +503,15 @@ def buildDocker(image, config) {
                 config.logger.info("Forcing building file per user request: ${filename} ... ")
                 need_build++
             }
-            if (config.get("cFiles").contains(filename)) {
+            config.logger.debug("Dockerfile name: ${filename}")
+            config.logger.debug("Changed files: ${changed_files}")
+            if (changed_files.contains(filename)) {
                 config.logger.info("Forcing building, file modified by commit: ${filename} ... ")
                 need_build++
             }
             if (need_build) {
                 config.logger.info("Building - ${img} - ${filename}")
-                buildImage(img, filename, config)
+                buildImage(img, filename, extra_args, config)
             }
         }
     }

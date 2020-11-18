@@ -504,7 +504,7 @@ def build_docker_on_k8(image, config) {
             jnlpImage = 'harbor.mellanox.com/swx-storage/jenkins-arm-agent-jnlp:latest'
             break;
         default:
-            config.logger.warn("Skipped unsupported arch (${axis.arch})")
+            config.logger.warn("Skipped unsupported arch (${image.arch})")
             return
             break;
     }

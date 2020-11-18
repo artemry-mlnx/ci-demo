@@ -277,26 +277,26 @@ def runK8(image, branchName, config, axis) {
         str += "$key = $val\n"
     }
 
-    config.logger.debug("str: ${str}")
+    config.logger.debug("runK8 | str: ${str}")
 
     def listV = parseListV(config.volumes)
     def cname = image.get("name").replaceAll("[\\.:/_]","")
 
-    config.logger.debug("arch: ${axis.arch}")
+    config.logger.debug("runK8 | arch: ${axis.arch}")
 
     def k8sArchTable = getConfigVal(config, ['kubernetes','arch_table'], "")
     def nodeSelector = ''
     def jnlpImage = ''
 
     if (!k8sArchTable) {
-        config.logger.warn("Arch mapping is not defined in ${env.conf_file}, defaults will be used")
+        config.logger.warn("runK8 | arch mapping is not defined in ${env.conf_file}, defaults will be used")
         k8sArchTable = getArchConf(axis.arch)
     }
 
     nodeSelector = k8sArchTable[axis.arch].nodeSelector
     jnlpImage = k8sArchTable[axis.arch].jnlpImage
-    config.logger.info("nodeSelector: ${nodeSelector}")
-    config.logger.info("jnlpImage: ${jnlpImage}")
+    config.logger.info("runK8 | nodeSelector: ${nodeSelector}")
+    config.logger.info("runK8 | jnlpImage: ${jnlpImage}")
 
     if (axis.nodeSelector) {
         if (nodeSelector) {
@@ -513,22 +513,20 @@ def build_docker_on_k8(image, config) {
     def listV = parseListV(myVols)
     def cloudName = getConfigVal(config, ['kubernetes','cloud'], "")
     config.logger.debug("Checking docker image availability")
-    def nodeSelector = ''
 
-    switch(image.arch) {
-        case 'x86_64':
-            nodeSelector = 'kubernetes.io/arch=amd64'
-            jnlpImage = 'jenkins/inbound-agent:latest'
-            break;
-        case 'aarch64':
-            nodeSelector = 'kubernetes.io/arch=arm64'
-            jnlpImage = 'harbor.mellanox.com/swx-storage/jenkins-arm-agent-jnlp:latest'
-            break;
-        default:
-            config.logger.warn("Skipped unsupported arch (${image.arch})")
-            return
-            break;
+    def k8sArchTable = getConfigVal(config, ['kubernetes','arch_table'], "")
+    def nodeSelector = ''
+    def jnlpImage = ''
+
+    if (!k8sArchTable) {
+        config.logger.warn("build_docker_on_k8 | arch mapping is not defined in ${env.conf_file}, defaults will be used")
+        k8sArchTable = getArchConf(image.arch)
     }
+
+    nodeSelector = k8sArchTable[image.arch].nodeSelector
+    jnlpImage = k8sArchTable[image.arch].jnlpImage
+    config.logger.info("build_docker_on_k8 | nodeSelector: ${nodeSelector}")
+    config.logger.info("build_docker_on_k8 | jnlpImage: ${jnlpImage}")
 
     if (image.nodeSelector) {
         if (nodeSelector) {

@@ -63,6 +63,8 @@ def forceCleanupWS() {
 }
 
 def gen_image_map(config) {
+    //def supported_arch_list = ['x86_64', 'aarch64', 'ppc64le']
+    def supported_arch_list = ['x86_64', 'aarch64']
     def image_map = [:]
 
     if (config.get("matrix") && config.matrix.axes.arch) {
@@ -80,13 +82,18 @@ def gen_image_map(config) {
     }
 
     image_map.each { arch, images ->
+        if (!supported_arch_list.contains(arch)) {
+            config.logger.warn("Skipped unsupported arch (${arch})")
+            return
+        }
+
         config.runs_on_dockers.each { dfile ->
             if (!dfile.file) {
                 dfile.file = ""
             }
 
             if (dfile.arch && dfile.arch != arch) {
-                config.logger.debug("WARNING: skipped conf: " + arch + " name: " + dfile.name)
+                config.logger.warn("Skipped conf: " + arch + " name: " + dfile.name)
                 return
             }
 
@@ -236,10 +243,32 @@ def parseListV(volumes) {
     return listV
 }
 
+Map getArchConf(arch) {
+    def nodeSelector = ''
+    def jnlpImage = ''
+    def archConfMap = [:]
+
+    switch(arch) {
+        case 'x86_64':
+            nodeSelector = 'kubernetes.io/arch=amd64'
+            jnlpImage = 'jenkins/inbound-agent:latest'
+            break;
+        case 'aarch64':
+            nodeSelector = 'kubernetes.io/arch=arm64'
+            jnlpImage = 'harbor.mellanox.com/swx-storage/jenkins-arm-agent-jnlp:latest'
+            break;
+        default:
+            config.logger.warn("Skipped unsupported arch (${arch})")
+            return
+            break;
+    }
+
+    archConfMap["${arch}"] = [nodeSelector: "${nodeSelector}", jnlpImage: "${jnlpImage}"]
+    return archConfMap
+}
+
 def runK8(image, branchName, config, axis) {
     def cloudName = getConfigVal(config, ['kubernetes','cloud'], "")
-    def nodeSelector = ""
-    def jnlpImage = ''
 
     config.logger.info("Running kubernetes ${cloudName}")
 
@@ -248,26 +277,26 @@ def runK8(image, branchName, config, axis) {
         str += "$key = $val\n"
     }
 
-    run_shell('printf "%s"' +  '"' + str + '"', "Matrix axis parameters")
+    config.logger.debug("runK8 | str: ${str}")
 
     def listV = parseListV(config.volumes)
     def cname = image.get("name").replaceAll("[\\.:/_]","")
 
-    run_shell('printf "INFO: arch = %s"' + axis.arch, "DEBUG")
+    config.logger.debug("runK8 | arch: ${axis.arch}")
 
-    switch(axis.arch) {
-        case 'x86_64':
-            nodeSelector = 'kubernetes.io/arch=amd64'
-            jnlpImage = 'jenkins/inbound-agent:latest'
-            break;
-        case 'aarch64':
-            nodeSelector = 'kubernetes.io/arch=arm64'
-            jnlpImage = 'harbor.mellanox.com/swx-storage/jenkins-arm-slave-jnlp:latest'
-            break;
-        default:
-            println('ERROR: unknown arch')
-            break;
+    def k8sArchTable = getConfigVal(config, ['kubernetes','arch_table'], "")
+    def nodeSelector = ''
+    def jnlpImage = ''
+
+    if (!k8sArchTable) {
+        config.logger.warn("runK8 | arch mapping is not defined in ${env.conf_file}, defaults will be used")
+        k8sArchTable = getArchConf(axis.arch)
     }
+
+    nodeSelector = k8sArchTable[axis.arch].nodeSelector
+    jnlpImage = k8sArchTable[axis.arch].jnlpImage
+    config.logger.info("runK8 | nodeSelector: ${nodeSelector}")
+    config.logger.info("runK8 | jnlpImage: ${jnlpImage}")
 
     if (axis.nodeSelector) {
         if (nodeSelector) {
@@ -484,21 +513,20 @@ def build_docker_on_k8(image, config) {
     def listV = parseListV(myVols)
     def cloudName = getConfigVal(config, ['kubernetes','cloud'], "")
     config.logger.debug("Checking docker image availability")
-    def nodeSelector = ''
 
-    switch(image.arch) {
-        case 'x86_64':
-            nodeSelector = 'kubernetes.io/arch=amd64'
-            jnlpImage = 'jenkins/inbound-agent:latest'
-            break;
-        case 'aarch64':
-            nodeSelector = 'kubernetes.io/arch=arm64'
-            jnlpImage = 'harbor.mellanox.com/swx-storage/jenkins-arm-slave-jnlp:latest'
-            break;
-        default:
-            println('ERROR: unknown arch')
-            break;
+    def k8sArchTable = getConfigVal(config, ['kubernetes','arch_table'], "")
+    def nodeSelector = ''
+    def jnlpImage = ''
+
+    if (!k8sArchTable) {
+        config.logger.warn("build_docker_on_k8 | arch mapping is not defined in ${env.conf_file}, defaults will be used")
+        k8sArchTable = getArchConf(image.arch)
     }
+
+    nodeSelector = k8sArchTable[image.arch].nodeSelector
+    jnlpImage = k8sArchTable[image.arch].jnlpImage
+    config.logger.info("build_docker_on_k8 | nodeSelector: ${nodeSelector}")
+    config.logger.info("build_docker_on_k8 | jnlpImage: ${jnlpImage}")
 
     if (image.nodeSelector) {
         if (nodeSelector) {

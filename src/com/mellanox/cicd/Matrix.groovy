@@ -295,11 +295,15 @@ def runK8(image, branchName, config, axis) {
     if (k8sArchTable) {
         nodeSelector = k8sArchTable[axis.arch].nodeSelector
         jnlpImage = k8sArchTable[axis.arch].jnlpImage
-        config.logger.info("nodeSelector: ${nodeSelector}")
-        config.logger.info("jnlpImage: ${jnlpImage}")
     } else {
-        config.logger.warn("Arch mapping is not defined in ${env.conf_file}")
+        config.logger.warn("Arch mapping is not defined in ${env.conf_file}, defaults will be used")
+        k8sArchTable = getArchConf(axis.arch)
+        nodeSelector = k8sArchTable[axis.arch].nodeSelector
+        jnlpImage = k8sArchTable[axis.arch].jnlpImage
     }
+
+    config.logger.info("nodeSelector: ${nodeSelector}")
+    config.logger.info("jnlpImage: ${jnlpImage}")
 
     //switch(axis.arch) {
     //    case 'x86_64':

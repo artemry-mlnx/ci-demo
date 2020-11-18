@@ -263,11 +263,7 @@ Map getArchConf(arch) {
             break;
     }
 
-    archConfMap["${arch}"] = [\
-        nodeSelector: "${nodeSelector}", \
-        jnlpImage: "${jnlpImage}" \
-    ]
-
+    archConfMap["${arch}"] = [nodeSelector: "${nodeSelector}", jnlpImage: "${jnlpImage}"]
     return archConfMap
 }
 
@@ -281,12 +277,12 @@ def runK8(image, branchName, config, axis) {
         str += "$key = $val\n"
     }
 
-    run_shell('printf "%s"' +  '"' + str + '"', "Matrix axis parameters")
+    config.logger.debug("str: ${str}")
 
     def listV = parseListV(config.volumes)
     def cname = image.get("name").replaceAll("[\\.:/_]","")
 
-    run_shell('printf "INFO: arch = %s"' + axis.arch, "DEBUG")
+    config.logger.debug("arch: ${axis.arch}")
 
     def k8sArchTable = getConfigVal(config, ['kubernetes','arch_table'], "")
     def nodeSelector = ''
@@ -301,21 +297,6 @@ def runK8(image, branchName, config, axis) {
     jnlpImage = k8sArchTable[axis.arch].jnlpImage
     config.logger.info("nodeSelector: ${nodeSelector}")
     config.logger.info("jnlpImage: ${jnlpImage}")
-
-    //switch(axis.arch) {
-    //    case 'x86_64':
-    //        nodeSelector = 'kubernetes.io/arch=amd64'
-    //        jnlpImage = 'jenkins/inbound-agent:latest'
-    //        break;
-    //    case 'aarch64':
-    //        nodeSelector = 'kubernetes.io/arch=arm64'
-    //        jnlpImage = 'harbor.mellanox.com/swx-storage/jenkins-arm-agent-jnlp:latest'
-    //        break;
-    //    default:
-    //        config.logger.warn("Skipped unsupported arch (${axis.arch})")
-    //        return
-    //        break;
-    //}
 
     if (axis.nodeSelector) {
         if (nodeSelector) {

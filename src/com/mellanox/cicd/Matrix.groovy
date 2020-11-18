@@ -263,20 +263,26 @@ def runK8(image, branchName, config, axis) {
 
     run_shell('printf "INFO: arch = %s"' + axis.arch, "DEBUG")
 
-    switch(axis.arch) {
-        case 'x86_64':
-            nodeSelector = 'kubernetes.io/arch=amd64'
-            jnlpImage = 'jenkins/inbound-agent:latest'
-            break;
-        case 'aarch64':
-            nodeSelector = 'kubernetes.io/arch=arm64'
-            jnlpImage = 'harbor.mellanox.com/swx-storage/jenkins-arm-agent-jnlp:latest'
-            break;
-        default:
-            config.logger.warn("Skipped unsupported arch (${axis.arch})")
-            return
-            break;
-    }
+    nodeSelector = k8sArchTable[axis.arch].nodeSelector
+    jnlpImage = k8sArchTable[axis.arch].jnlpImage
+
+    config.logger.info("nodeSelector: ${nodeSelector}")
+    config.logger.info("jnlpImage: ${jnlpImage}")
+
+    //switch(axis.arch) {
+    //    case 'x86_64':
+    //        nodeSelector = 'kubernetes.io/arch=amd64'
+    //        jnlpImage = 'jenkins/inbound-agent:latest'
+    //        break;
+    //    case 'aarch64':
+    //        nodeSelector = 'kubernetes.io/arch=arm64'
+    //        jnlpImage = 'harbor.mellanox.com/swx-storage/jenkins-arm-agent-jnlp:latest'
+    //        break;
+    //    default:
+    //        config.logger.warn("Skipped unsupported arch (${axis.arch})")
+    //        return
+    //        break;
+    //}
 
     if (axis.nodeSelector) {
         if (nodeSelector) {

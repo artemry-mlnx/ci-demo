@@ -273,9 +273,6 @@ Map getArchConf(arch) {
 
 def runK8(image, branchName, config, axis) {
     def cloudName = getConfigVal(config, ['kubernetes','cloud'], "")
-    def k8sArchTable = getConfigVal(config, ['kubernetes','arch_table'], "")
-    def nodeSelector = ''
-    def jnlpImage = ''
 
     config.logger.info("Running kubernetes ${cloudName}")
 
@@ -291,16 +288,17 @@ def runK8(image, branchName, config, axis) {
 
     run_shell('printf "INFO: arch = %s"' + axis.arch, "DEBUG")
 
-    if (k8sArchTable) {
-        nodeSelector = k8sArchTable[axis.arch].nodeSelector
-        jnlpImage = k8sArchTable[axis.arch].jnlpImage
-    } else {
+    def k8sArchTable = getConfigVal(config, ['kubernetes','arch_table'], "")
+    def nodeSelector = ''
+    def jnlpImage = ''
+
+    if (!k8sArchTable) {
         config.logger.warn("Arch mapping is not defined in ${env.conf_file}, defaults will be used")
         k8sArchTable = getArchConf(axis.arch)
-        nodeSelector = k8sArchTable[axis.arch].nodeSelector
-        jnlpImage = k8sArchTable[axis.arch].jnlpImage
     }
 
+    nodeSelector = k8sArchTable[axis.arch].nodeSelector
+    jnlpImage = k8sArchTable[axis.arch].jnlpImage
     config.logger.info("nodeSelector: ${nodeSelector}")
     config.logger.info("jnlpImage: ${jnlpImage}")
 

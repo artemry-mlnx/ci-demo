@@ -263,8 +263,7 @@ Map getArchConf(arch) {
             break;
     }
 
-    archConfMap = [\
-        arch: "${arch}", \
+    archConfMap["${arch}"] = [\
         nodeSelector: "${nodeSelector}", \
         jnlpImage: "${jnlpImage}" \
     ]

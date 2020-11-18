@@ -82,10 +82,10 @@ def gen_image_map(config) {
     }
 
     image_map.each { arch, images ->
-        //if (!supported_arch_list.contains(arch)) {
-        //    config.logger.warn("Skipped unsupported arch (${arch})")
-        //    return
-        //}
+        if (!supported_arch_list.contains(arch)) {
+            config.logger.warn("Skipped unsupported arch (${arch})")
+            return
+        }
 
         config.runs_on_dockers.each { dfile ->
             if (!dfile.file) {
@@ -245,7 +245,8 @@ def parseListV(volumes) {
 
 def runK8(image, branchName, config, axis) {
     def cloudName = getConfigVal(config, ['kubernetes','cloud'], "")
-    def nodeSelector = ""
+    def k8sArchTable = getConfigVal(config, ['kubernetes','arch_table'], "")
+    def nodeSelector = ''
     def jnlpImage = ''
 
     config.logger.info("Running kubernetes ${cloudName}")

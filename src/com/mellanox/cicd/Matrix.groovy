@@ -82,10 +82,10 @@ def gen_image_map(config) {
     }
 
     image_map.each { arch, images ->
-        if (!supported_arch_list.contains(arch)) {
-            config.logger.warn("Skipped unsupported arch (${arch})")
-            return
-        }
+        //if (!supported_arch_list.contains(arch)) {
+        //    config.logger.warn("Skipped unsupported arch (${arch})")
+        //    return
+        //}
 
         config.runs_on_dockers.each { dfile ->
             if (!dfile.file) {

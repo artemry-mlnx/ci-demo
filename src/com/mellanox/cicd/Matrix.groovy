@@ -63,6 +63,8 @@ def forceCleanupWS() {
 }
 
 def gen_image_map(config) {
+    //def supported_arch_list = ['x86_64', 'aarch64', 'ppc64le']
+    def supported_arch_list = ['x86_64', 'aarch64']
     def image_map = [:]
 
     if (config.get("matrix") && config.matrix.axes.arch) {
@@ -80,6 +82,11 @@ def gen_image_map(config) {
     }
 
     image_map.each { arch, images ->
+        if (!supported_arch_list.contains(arch)) {
+            config.logger.warn("Skipped unsupported arch (${arch})")
+            return
+        }
+
         config.runs_on_dockers.each { dfile ->
             if (!dfile.file) {
                 dfile.file = ""
@@ -263,6 +270,10 @@ def runK8(image, branchName, config, axis) {
         case 'aarch64':
             nodeSelector = 'kubernetes.io/arch=arm64'
             jnlpImage = 'harbor.mellanox.com/swx-storage/jenkins-arm-agent-jnlp:latest'
+            break;
+        default:
+            config.logger.warn("Skipped unsupported arch (${axis.arch})")
+            return
             break;
     }
 
@@ -491,6 +502,10 @@ def build_docker_on_k8(image, config) {
         case 'aarch64':
             nodeSelector = 'kubernetes.io/arch=arm64'
             jnlpImage = 'harbor.mellanox.com/swx-storage/jenkins-arm-agent-jnlp:latest'
+            break;
+        default:
+            config.logger.warn("Skipped unsupported arch (${axis.arch})")
+            return
             break;
     }
 

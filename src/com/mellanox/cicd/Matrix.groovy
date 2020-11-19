@@ -308,7 +308,7 @@ def runK8(image, branchName, config, axis) {
     def jnlpImage = ''
 
     if (!k8sArchConf) {
-        config.logger.err("runK8 | arch conf is not defined for ${axis.arch}")
+        config.logger.error("runK8 | arch conf is not defined for ${axis.arch}")
         return
     }
 
@@ -544,7 +544,7 @@ def build_docker_on_k8(image, config) {
     def jnlpImage = ''
 
     if (!k8sArchConf) {
-        config.logger.err("build_docker_on_k8 | arch conf is not defined for ${image.arch}")
+        config.logger.error("build_docker_on_k8 | arch conf is not defined for ${image.arch}")
         return
     }
 

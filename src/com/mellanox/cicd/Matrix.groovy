@@ -101,7 +101,7 @@ Map getArchConf(config, arch) {
     config.logger.debug("supported_arch_list_type | supported_arch_list_type = ${supported_arch_list_type}")
     config.logger.debug("supported_arch_list_type | arch_type = ${arch_type}")
 
-    if (!supported_arch_list.contains(arch)) {
+    if (!arch in supported_arch_list) {
         config.logger.warn("getArchConf | skipped unsupported arch (${arch})")
         return
     }

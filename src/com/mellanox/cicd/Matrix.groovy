@@ -119,8 +119,8 @@ def gen_image_map(config) {
     }
 
     image_map.each { arch, images ->
-        archConf = getArchConf(config, arch)
-        if (!archConf) {
+        def k8sArchConf = getArchConf(config, arch)
+        if (!k8sArchConf) {
             config.logger.warn("gen_image_map | skipped unsupported arch (${arch})")
             return
         }

@@ -86,20 +86,14 @@ Map getArchConf(config, arch) {
                     k8sArchConfTable['aarch64'] = [nodeSelector: 'kubernetes.io/arch=arm64', jnlpImage: 'harbor.mellanox.com/swx-storage/jenkins-arm-agent-jnlp:latest']
                     break;
                 default:
-                    config.logger.warn("getArchConf | Skipped unsupported arch (${arch})")
+                    config.logger.warn("getArchConf | skipped unsupported arch (${arch})")
                     return
                     break;
             }
         }
     }
 
-    def supported_arch_list = k8sArchConfTable['supported_arch_list'] as List
-    config.logger.debug("getArchConf | supported_arch_list = ${supported_arch_list}")
-    config.logger.debug("getArchConf | arch = ${arch}")
-    def supported_arch_list_type = supported_arch_list.getClass()
-    def arch_type = arch.getClass()
-    config.logger.debug("supported_arch_list_type | supported_arch_list_type = ${supported_arch_list_type}")
-    config.logger.debug("supported_arch_list_type | arch_type = ${arch_type}")
+    def supported_arch_list = k8sArchConfTable['supported_arch_list']
 
     if (!arch in supported_arch_list) {
         config.logger.warn("getArchConf | skipped unsupported arch (${arch})")
@@ -139,7 +133,7 @@ def gen_image_map(config) {
             }
 
             if (dfile.arch && dfile.arch != arch) {
-                config.logger.warn("Skipped conf: " + arch + " name: " + dfile.name)
+                config.logger.warn("skipped conf: " + arch + " name: " + dfile.name)
                 return
             }
 

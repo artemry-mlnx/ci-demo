@@ -62,6 +62,45 @@ def forceCleanupWS() {
     run_shell(cmd, "Clean workspace")
 }
 
+Map getArchConf(config, arch) {
+    def k8sArchConfTable = getConfigVal(config, ['kubernetes', 'arch_table'], "")
+
+    if (!k8sArchConfTable) {
+        config.logger.warn("getArchConf | kubernetes -> arch_table parameter is not defined, defaults will be used")
+        k8sArchConfTable['supported_arch_list'] = ['x86_64', 'aarch64']
+        k8sArchConfTable['x86_64'] = [nodeSelector: 'kubernetes.io/arch=amd64', jnlpImage: 'jenkins/inbound-agent:latest']
+        k8sArchConfTable['aarch64'] = [nodeSelector: 'kubernetes.io/arch=arm64', jnlpImage: 'harbor.mellanox.com/swx-storage/jenkins-arm-agent-jnlp:latest']
+    } else {
+        if (!k8sArchConfTable['supported_arch_list']) {
+            config.logger.warn("getArchConf | kubernetes -> arch_table -> supported_arch_list parameter is not defined, defaults will be used")
+            k8sArchConfTable['supported_arch_list'] = ['x86_64', 'aarch64']
+        }
+
+        if (!k8sArchConfTable[arch] || !k8sArchConfTable[arch].nodeSelector || !k8sArchConfTable[arch].jnlpImage) {
+            config.logger.warn("getArchConf | kubernetes -> arch_table -> ${arch} parameters are not defined, defaults will be used")
+            switch(arch) {
+                case 'x86_64':
+                    k8sArchConfTable['x86_64'] = [nodeSelector: 'kubernetes.io/arch=amd64', jnlpImage: 'jenkins/inbound-agent:latest']
+                    break;
+                case 'aarch64':
+                    k8sArchConfTable['aarch64'] = [nodeSelector: 'kubernetes.io/arch=arm64', jnlpImage: 'harbor.mellanox.com/swx-storage/jenkins-arm-agent-jnlp:latest']
+                    break;
+                default:
+                    config.logger.warn("getArchConf | Skipped unsupported arch (${arch})")
+                    return
+                    break;
+            }
+        }
+    }
+
+    if (!k8sArchConfTable['supported_arch_list'].contains(arch)) {
+        config.logger.warn("getArchConf | skipped unsupported arch (${arch})")
+        return
+    }
+
+    return k8sArchConfTable[arch]
+}
+
 def gen_image_map(config) {
     def image_map = [:]
 
@@ -245,45 +284,6 @@ def parseListV(volumes) {
         listV.add(hpv)
     }
     return listV
-}
-
-Map getArchConf(config, arch) {
-    def k8sArchConfTable = getConfigVal(config, ['kubernetes', 'arch_table'], "")
-
-    if (!k8sArchConfTable) {
-        config.logger.warn("getArchConf | kubernetes -> arch_table parameter is not defined, defaults will be used")
-        k8sArchConfTable['supported_arch_list'] = ['x86_64', 'aarch64']
-        k8sArchConfTable['x86_64'] = [nodeSelector: 'kubernetes.io/arch=amd64', jnlpImage: 'jenkins/inbound-agent:latest']
-        k8sArchConfTable['aarch64'] = [nodeSelector: 'kubernetes.io/arch=arm64', jnlpImage: 'harbor.mellanox.com/swx-storage/jenkins-arm-agent-jnlp:latest']
-    } else {
-        if (!k8sArchConfTable['supported_arch_list']) {
-            config.logger.warn("getArchConf | kubernetes -> arch_table -> supported_arch_list parameter is not defined, defaults will be used")
-            k8sArchConfTable['supported_arch_list'] = ['x86_64', 'aarch64']
-        }
-
-        if (!k8sArchConfTable[arch] || !k8sArchConfTable[arch].nodeSelector || !k8sArchConfTable[arch].jnlpImage) {
-            config.logger.warn("getArchConf | kubernetes -> arch_table -> ${arch} parameters are not defined, defaults will be used")
-            switch(arch) {
-                case 'x86_64':
-                    k8sArchConfTable['x86_64'] = [nodeSelector: 'kubernetes.io/arch=amd64', jnlpImage: 'jenkins/inbound-agent:latest']
-                    break;
-                case 'aarch64':
-                    k8sArchConfTable['aarch64'] = [nodeSelector: 'kubernetes.io/arch=arm64', jnlpImage: 'harbor.mellanox.com/swx-storage/jenkins-arm-agent-jnlp:latest']
-                    break;
-                default:
-                    config.logger.warn("getArchConf | Skipped unsupported arch (${arch})")
-                    return
-                    break;
-            }
-        }
-    }
-
-    if (!k8sArchConfTable['supported_arch_list'].contains(arch)) {
-        config.logger.warn("getArchConf | skipped unsupported arch (${arch})")
-        return
-    }
-
-    return k8sArchConfTable[arch]
 }
 
 def runK8(image, branchName, config, axis) {

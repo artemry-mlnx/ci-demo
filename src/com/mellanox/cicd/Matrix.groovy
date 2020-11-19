@@ -93,7 +93,7 @@ Map getArchConf(config, arch) {
         }
     }
 
-    def supported_arch_list = k8sArchConfTable['supported_arch_list'].toList()
+    def supported_arch_list = k8sArchConfTable['supported_arch_list'] as Set
     config.logger.debug("getArchConf | supported_arch_list = ${supported_arch_list}")
 
     if (!supported_arch_list.contains(arch)) {

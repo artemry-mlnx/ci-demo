@@ -93,9 +93,7 @@ Map getArchConf(config, arch) {
         }
     }
 
-    def supported_arch_list = k8sArchConfTable['supported_arch_list']
-
-    if (!arch in supported_arch_list) {
+    if (!arch in k8sArchConfTable['supported_arch_list']) {
         config.logger.warn("getArchConf | skipped unsupported arch (${arch})")
         return
     }

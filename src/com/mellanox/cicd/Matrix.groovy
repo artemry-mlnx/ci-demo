@@ -93,7 +93,7 @@ Map getArchConf(config, arch) {
         }
     }
 
-    def supported_arch_list = k8sArchConfTable['supported_arch_list'] as Set
+    def supported_arch_list = Eval.me(k8sArchConfTable['supported_arch_list'])
     config.logger.debug("getArchConf | supported_arch_list = ${supported_arch_list}")
     config.logger.debug("getArchConf | arch = ${arch}")
     def supported_arch_list_type = supported_arch_list.getClass()

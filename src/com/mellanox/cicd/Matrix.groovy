@@ -539,7 +539,7 @@ def build_docker_on_k8(image, config) {
     def cloudName = getConfigVal(config, ['kubernetes','cloud'], "")
     config.logger.debug("Checking docker image availability")
 
-    def k8sArchConf = getArchConf(image.arch)
+    def k8sArchConf = getArchConf(config, image.arch)
     def nodeSelector = ''
     def jnlpImage = ''
 

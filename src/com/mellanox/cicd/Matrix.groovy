@@ -63,7 +63,7 @@ def forceCleanupWS() {
 }
 
 Map getArchConf(config, arch) {
-    def k8sArchConfTable = getConfigVal(config, ['kubernetes', 'arch_table'], "")
+    def k8sArchConfTable = getConfigVal(config, ['kubernetes', 'arch_table'], [:])
 
     if (!k8sArchConfTable) {
         config.logger.warn("getArchConf | kubernetes -> arch_table parameter is not defined, defaults will be used")

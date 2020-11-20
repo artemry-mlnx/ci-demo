@@ -8,6 +8,9 @@ registry_auth: swx-storage
 kubernetes:
   cloud: swx-k8s
   arch_table:
+    supported_arch_list:
+      - 'x86_64'
+      - 'aarch64'
     x86_64:
       nodeSelector: 'kubernetes.io/arch=amd64'
       jnlpImage: 'jenkins/inbound-agent:latest'

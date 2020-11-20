@@ -62,9 +62,46 @@ def forceCleanupWS() {
     run_shell(cmd, "Clean workspace")
 }
 
+Map getArchConf(config, arch) {
+    def k8sArchConfTable = getConfigVal(config, ['kubernetes', 'arch_table'], [:])
+
+    if (!k8sArchConfTable) {
+        config.logger.warn("getArchConf | kubernetes -> arch_table parameter is not defined, defaults will be used")
+        k8sArchConfTable['supported_arch_list'] = ['x86_64', 'aarch64']
+        k8sArchConfTable['x86_64'] = [nodeSelector: 'kubernetes.io/arch=amd64', jnlpImage: 'jenkins/inbound-agent:latest']
+        k8sArchConfTable['aarch64'] = [nodeSelector: 'kubernetes.io/arch=arm64', jnlpImage: 'harbor.mellanox.com/swx-storage/jenkins-arm-agent-jnlp:latest']
+    } else {
+        if (!k8sArchConfTable['supported_arch_list']) {
+            config.logger.warn("getArchConf | kubernetes -> arch_table -> supported_arch_list parameter is not defined, defaults will be used")
+            k8sArchConfTable['supported_arch_list'] = ['x86_64', 'aarch64']
+        }
+
+        if (!k8sArchConfTable[arch] || !k8sArchConfTable[arch].nodeSelector || !k8sArchConfTable[arch].jnlpImage) {
+            config.logger.warn("getArchConf | kubernetes -> arch_table -> ${arch} parameters are not defined, defaults will be used")
+            switch(arch) {
+                case 'x86_64':
+                    k8sArchConfTable['x86_64'] = [nodeSelector: 'kubernetes.io/arch=amd64', jnlpImage: 'jenkins/inbound-agent:latest']
+                    break;
+                case 'aarch64':
+                    k8sArchConfTable['aarch64'] = [nodeSelector: 'kubernetes.io/arch=arm64', jnlpImage: 'harbor.mellanox.com/swx-storage/jenkins-arm-agent-jnlp:latest']
+                    break;
+                default:
+                    config.logger.warn("getArchConf | skipped unsupported arch (${arch})")
+                    return
+                    break;
+            }
+        }
+    }
+
+    if (!arch in k8sArchConfTable['supported_arch_list']) {
+        config.logger.warn("getArchConf | skipped unsupported arch (${arch})")
+        return
+    }
+
+    return k8sArchConfTable[arch]
+}
+
 def gen_image_map(config) {
-    //def supported_arch_list = ['x86_64', 'aarch64', 'ppc64le']
-    def supported_arch_list = ['x86_64', 'aarch64']
     def image_map = [:]
 
     if (config.get("matrix") && config.matrix.axes.arch) {
@@ -82,8 +119,9 @@ def gen_image_map(config) {
     }
 
     image_map.each { arch, images ->
-        if (!supported_arch_list.contains(arch)) {
-            config.logger.warn("Skipped unsupported arch (${arch})")
+        def k8sArchConf = getArchConf(config, arch)
+        if (!k8sArchConf) {
+            config.logger.warn("gen_image_map | skipped unsupported arch (${arch})")
             return
         }
 
@@ -93,7 +131,7 @@ def gen_image_map(config) {
             }
 
             if (dfile.arch && dfile.arch != arch) {
-                config.logger.warn("Skipped conf: " + arch + " name: " + dfile.name)
+                config.logger.warn("skipped conf: " + arch + " name: " + dfile.name)
                 return
             }
 
@@ -189,22 +227,45 @@ def getDefaultShell(config=null, step=null, shell='#!/bin/bash -l') {
     return ret
 }
 
-def runSteps(image, config) {
+def run_step(cmd,title) {
+    run_shell("echo Starting step: ${title}", title)
+    run_shell(cmd, title)
+}
+
+def runSteps(image, config, branchName) {
     forceCleanupWS()
     // fetch .git from server and unpack
     unstash "${env.JOB_NAME}"
     onUnstash()
 
-
-    config.steps.each { one->
+    def parallelNestedSteps = [:]
+    config.steps.eachWithIndex { one, i ->
 
         def shell = getDefaultShell(config, one)
-        echo "Step: ${one.name}"
         def cmd = """${shell}
         ${one.run}
         """
+        def par = one.get("parallel")
+        // collect parallel steps (if any) and run it when non-parallel step discovered or last element.
+        if ( par != null && par == true) {
+            def stepName = branchName + "->" + one.name
+            parallelNestedSteps[stepName] = {run_step(cmd, stepName)}
+            // last element - run and flush
+            if (i == config.steps.size() -1) {
+                parallel(parallelNestedSteps)
+                parallelNestedSteps = [:]
+            }
+            return
+        }
+        // non-parallel step discovered, need to flush all parallel 
+        // steps collected previously to keep ordering.
+        // run non-parallel step right after
+        if (parallelNestedSteps.size() > 0) {
+            parallel(parallelNestedSteps)
+            parallelNestedSteps = [:]
+        }
         try {
-            run_shell(cmd, one.name)
+            run_step(cmd, one.name)
         } catch (e) {
             if (one.get("onfail") != null) {
                 run_shell(one.onfail, "onfail command for ${one.name}")
@@ -248,30 +309,6 @@ def parseListV(volumes) {
     return listV
 }
 
-Map getArchConf(arch) {
-    def nodeSelector = ''
-    def jnlpImage = ''
-    def archConfMap = [:]
-
-    switch(arch) {
-        case 'x86_64':
-            nodeSelector = 'kubernetes.io/arch=amd64'
-            jnlpImage = 'jenkins/inbound-agent:latest'
-            break;
-        case 'aarch64':
-            nodeSelector = 'kubernetes.io/arch=arm64'
-            jnlpImage = 'harbor.mellanox.com/swx-storage/jenkins-arm-agent-jnlp:latest'
-            break;
-        default:
-            config.logger.warn("Skipped unsupported arch (${arch})")
-            return
-            break;
-    }
-
-    archConfMap["${arch}"] = [nodeSelector: "${nodeSelector}", jnlpImage: "${jnlpImage}"]
-    return archConfMap
-}
-
 def runK8(image, branchName, config, axis) {
     def cloudName = getConfigVal(config, ['kubernetes','cloud'], "")
 
@@ -289,17 +326,17 @@ def runK8(image, branchName, config, axis) {
 
     config.logger.debug("runK8 | arch: ${axis.arch}")
 
-    def k8sArchTable = getConfigVal(config, ['kubernetes','arch_table'], "")
+    def k8sArchConf = getArchConf(config, axis.arch)
     def nodeSelector = ''
     def jnlpImage = ''
 
-    if (!k8sArchTable) {
-        config.logger.warn("runK8 | arch mapping is not defined in ${env.conf_file}, defaults will be used")
-        k8sArchTable = getArchConf(axis.arch)
+    if (!k8sArchConf) {
+        config.logger.error("runK8 | arch conf is not defined for ${axis.arch}")
+        return
     }
 
-    nodeSelector = k8sArchTable[axis.arch].nodeSelector
-    jnlpImage = k8sArchTable[axis.arch].jnlpImage
+    nodeSelector = k8sArchConf.nodeSelector
+    jnlpImage = k8sArchConf.jnlpImage
     config.logger.info("runK8 | nodeSelector: ${nodeSelector}")
     config.logger.info("runK8 | jnlpImage: ${jnlpImage}")
 
@@ -326,7 +363,7 @@ def runK8(image, branchName, config, axis) {
         node(POD_LABEL) {
             stage (branchName) {
                 container(cname) {
-                    runSteps(image, config)
+                    runSteps(image, config, branchName)
                 }
             }
         }
@@ -384,6 +421,7 @@ Map getTasks(axes, image, config, include=null, exclude=null) {
         axis.put("name", image.name)
         axis.put("job", config.job)
         axis.put("variant", i + 1)
+        axis.put("axis_index", i + 1)
 
         if (exclude && matchMapEntry(exclude, axis)) {
             config.logger.info("Applying exclude filter on  " + axis.toMapString())
@@ -393,7 +431,7 @@ Map getTasks(axes, image, config, include=null, exclude=null) {
             continue
         }
 
-        def tmpl = getConfigVal(config, ['taskName'], '${arch}/${name}/${variant}')
+        def tmpl = getConfigVal(config, ['taskName'], '${arch}/${name} v${axis_index}')
         def branchName = resolveTemplate(axis, tmpl)
         //def branchName = axis.values().join(', ')
 
@@ -413,7 +451,7 @@ Map getTasks(axes, image, config, include=null, exclude=null) {
                     config.logger.fatal("Please define kubernetes cloud name in yaml config file or define nodeLabel for docker")
                 }
                 if (image.nodeLabel) {
-                    runDocker(image, config, branchName, axis, { pimage, pconfig -> runSteps(pimage, pconfig) })
+                    runDocker(image, config, branchName, axis, { pimage, pconfig -> runSteps(pimage, pconfig, branchName) })
                 } else {
                     runK8(image, branchName, config, axis)
                 }
@@ -525,17 +563,17 @@ def build_docker_on_k8(image, config) {
     def cloudName = getConfigVal(config, ['kubernetes','cloud'], "")
     config.logger.debug("Checking docker image availability")
 
-    def k8sArchTable = getConfigVal(config, ['kubernetes','arch_table'], "")
+    def k8sArchConf = getArchConf(config, image.arch)
     def nodeSelector = ''
     def jnlpImage = ''
 
-    if (!k8sArchTable) {
-        config.logger.warn("build_docker_on_k8 | arch mapping is not defined in ${env.conf_file}, defaults will be used")
-        k8sArchTable = getArchConf(image.arch)
+    if (!k8sArchConf) {
+        config.logger.error("build_docker_on_k8 | arch conf is not defined for ${image.arch}")
+        return
     }
 
-    nodeSelector = k8sArchTable[image.arch].nodeSelector
-    jnlpImage = k8sArchTable[image.arch].jnlpImage
+    nodeSelector = k8sArchConf.nodeSelector
+    jnlpImage = k8sArchConf.jnlpImage
     config.logger.info("build_docker_on_k8 | nodeSelector: ${nodeSelector}")
     config.logger.info("build_docker_on_k8 | jnlpImage: ${jnlpImage}")
 

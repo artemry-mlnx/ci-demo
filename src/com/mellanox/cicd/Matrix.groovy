@@ -62,42 +62,45 @@ def forceCleanupWS() {
     run_shell(cmd, "Clean workspace")
 }
 
-Map getArchConf(config, arch) {
-    def k8sArchConfTable = getConfigVal(config, ['kubernetes', 'arch_table'], [:])
 
-    if (!k8sArchConfTable) {
-        config.logger.warn("getArchConf | kubernetes -> arch_table parameter is not defined, defaults will be used")
-        k8sArchConfTable['supported_arch_list'] = ['x86_64', 'aarch64']
-        k8sArchConfTable['x86_64'] = [nodeSelector: 'kubernetes.io/arch=amd64', jnlpImage: 'jenkins/inbound-agent:latest']
-        k8sArchConfTable['aarch64'] = [nodeSelector: 'kubernetes.io/arch=arm64', jnlpImage: 'harbor.mellanox.com/swx-storage/jenkins-arm-agent-jnlp:latest']
-    } else {
-        if (!k8sArchConfTable['supported_arch_list']) {
-            config.logger.warn("getArchConf | kubernetes -> arch_table -> supported_arch_list parameter is not defined, defaults will be used")
-            k8sArchConfTable['supported_arch_list'] = ['x86_64', 'aarch64']
-        }
+def getArchConf(config, arch) {
 
-        if (!k8sArchConfTable[arch] || !k8sArchConfTable[arch].nodeSelector || !k8sArchConfTable[arch].jnlpImage) {
-            config.logger.warn("getArchConf | kubernetes -> arch_table -> ${arch} parameters are not defined, defaults will be used")
-            switch(arch) {
-                case 'x86_64':
-                    k8sArchConfTable['x86_64'] = [nodeSelector: 'kubernetes.io/arch=amd64', jnlpImage: 'jenkins/inbound-agent:latest']
-                    break;
-                case 'aarch64':
-                    k8sArchConfTable['aarch64'] = [nodeSelector: 'kubernetes.io/arch=arm64', jnlpImage: 'harbor.mellanox.com/swx-storage/jenkins-arm-agent-jnlp:latest']
-                    break;
-                default:
-                    config.logger.warn("getArchConf | skipped unsupported arch (${arch})")
-                    return
-                    break;
-            }
-        }
+    def k8sArchConfTable = [:]
+
+    config.logger.debug("getArchConf: arch=" + arch)
+    
+    k8sArchConfTable['x86_64']  = [
+        nodeSelector: 'kubernetes.io/arch=amd64',
+        jnlpImage: 'jenkins/inbound-agent:latest'
+    ]
+
+    if (!config.registry_jnlp_path) {
+        def array = config.registry_path.split("/")
+        config.registry_jnlp_path = array[array.length - 2]
     }
 
-    if (!arch in k8sArchConfTable['supported_arch_list']) {
-        config.logger.warn("getArchConf | skipped unsupported arch (${arch})")
-        return
+    k8sArchConfTable['aarch64'] = [
+        nodeSelector: 'kubernetes.io/arch=arm64',
+        jnlpImage: "${config.registry_host}/${config.registry_jnlp_path}/jenkins-arm-agent-jnlp:latest"
+    ]
+
+    def aTable = getConfigVal(config, ['kubernetes', 'arch_table'], null)
+    if (aTable != null) {
+        k8sArchConfTable += aTable
+    }
+    
+    def varsMap = [
+        registry_path:  config.registry_path,
+        registry_jnlp_path: config.registry_jnlp_path,
+        registry_host: config.registry_host
+    ]
+
+    k8sArchConfTable.each { key, val ->
+        config.logger.debug("getArchConf: resolving template for key=" + key + " val=" + val)
+        val.jnlpImage = resolveTemplate(varsMap, val.get("jnlpImage"))
     }
 
+    config.logger.debug("k8sArchConfTable: " + k8sArchConfTable)
     return k8sArchConfTable[arch]
 }
 
@@ -119,6 +122,7 @@ def gen_image_map(config) {
     }
 
     image_map.each { arch, images ->
+
         def k8sArchConf = getArchConf(config, arch)
         if (!k8sArchConf) {
             config.logger.warn("gen_image_map | skipped unsupported arch (${arch})")
@@ -126,6 +130,7 @@ def gen_image_map(config) {
         }
 
         config.runs_on_dockers.each { dfile ->
+
             if (!dfile.file) {
                 dfile.file = ""
             }
@@ -139,11 +144,23 @@ def gen_image_map(config) {
                 dfile.build_args = ""
             }
 
+            if (!dfile.uri) {
+                // default URI subpath for Docker image on a harbor
+                dfile.uri = "${arch}/${dfile.name}"
+            } else {
+                def env_map = env.getEnvironment()
+                dfile.each { key, value ->
+                    env_map[key] = value
+                }
+                dfile.uri = resolveTemplate(env_map, dfile.uri)
+            }
+
+
             def item = [\
                 arch: "${arch}", \
                 tag:  "${dfile.tag}", \
                 filename: "${dfile.file}", \
-                url: "${config.registry_host}${config.registry_path}/${arch}/${dfile.name}:${dfile.tag}", \
+                url: "${config.registry_host}${config.registry_path}/${dfile.uri}:${dfile.tag}", \
                 name: "${dfile.name}", \
                 build_args: "${dfile.build_args}" \
             ]
@@ -608,6 +625,11 @@ def build_docker_on_k8(image, config) {
     }
 }
 
+def run_parallel_in_chunks(myTasks, bSize) {
+    (myTasks.keySet() as List).collate(bSize).each {
+        parallel myTasks.subMap(it)
+    }
+}
 
 def main() {
     node("master") {
@@ -656,27 +678,29 @@ def main() {
 // $arch -> List[$docker, $docker, $docker]
 // this is to avoid that multiple axis from matrix will create own same copy for $docker but creating it upfront.
 
+            def parallelBuildDockers = [:]
+
             def arch_distro_map = gen_image_map(config)
             arch_distro_map.each { arch, images ->
                 images.each { image ->
-                    if (image.nodeLabel) {
-                        runDocker(image, config, "Preparing docker image", null, { pimage, pconfig -> buildDocker(pimage, pconfig) }, false)
-                    } else {
-                        build_docker_on_k8(image, config)
+                    parallelBuildDockers[image.name] = {
+                        if (image.nodeLabel) {
+                            runDocker(image, config, "Preparing docker image", null, { pimage, pconfig -> buildDocker(pimage, pconfig) }, false)
+                        } else {
+                            build_docker_on_k8(image, config)
+                        }
                     }
                     branches += getMatrixTasks(image, config)
                 }
             }
         
             try {
-
                 def bSize = getConfigVal(config, ['batchSize'], 10)
                 def timeout_min = getConfigVal(config, ['timeout_minutes'], "90")
                 timeout(time: timeout_min, unit: 'MINUTES') {
-                    (branches.keySet() as List).collate(bSize).each {
-                        timestamps {
-                            parallel branches.subMap(it)
-                        }
+                    timestamps {
+                        run_parallel_in_chunks(parallelBuildDockers, bSize)
+                        run_parallel_in_chunks(branches, bSize)
                     }
                 }
             } finally {

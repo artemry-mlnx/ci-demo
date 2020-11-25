@@ -84,6 +84,11 @@ def getArchConf(config, arch) {
         jnlpImage: "${config.registry_host}/${config.registry_jnlp_path}/jenkins-arm-agent-jnlp:latest"
     ]
 
+    k8sArchConfTable['ppc64le'] = [
+        nodeSelector: 'kubernetes.io/arch=ppc64le',
+        jnlpImage: "${config.registry_host}/${config.registry_jnlp_path}/jenkins-ppc64le-agent-jnlp:latest"
+    ]
+
     def aTable = getConfigVal(config, ['kubernetes', 'arch_table'], null)
     if (aTable != null) {
         k8sArchConfTable += aTable

@@ -618,7 +618,7 @@ def build_docker_on_k8(image, config) {
         nodeSelector: nodeSelector,
         containers: [
             containerTemplate(name: 'jnlp', image: jnlpImage, args: '${computer.jnlpmac} ${computer.name}'),
-            containerTemplate(name: 'docker', image: 'docker:19.03', ttyEnabled: true, alwaysPullImage: true, command: 'cat')
+            containerTemplate(name: 'docker', image: 'ppc64le/docker', ttyEnabled: true, alwaysPullImage: true, command: 'cat')
         ],
         volumes: listV
     )
